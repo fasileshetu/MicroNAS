@@ -46,7 +46,7 @@ def evaluate_architecture(arch: Architecture) -> tuple:
     start = time.time()
     model.fit(
         x_train, y_train,
-        epochs=5,
+        epochs=10,
         batch_size=64,
         verbose=0
     )
