@@ -1,7 +1,9 @@
 import numpy as np
+import ast
 import csv
 from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
+from search.space import INPUT_SIZE, OUTPUT_SIZE
 
 VALID_ACTIVATIONS = ['relu', 'tanh', 'sigmoid']
 VALID_LAYER_SIZES = [32, 64, 128, 256, 512]
@@ -18,7 +20,7 @@ def architecture_to_features(arch) -> np.ndarray:
     features.append(len(arch.hidden_layers) / MAX_LAYERS)
 
     # 2. param count (normalized)
-    max_params = 784 * 512 + 512 * 10
+    max_params = INPUT_SIZE * 512 + 512 * OUTPUT_SIZE
     features.append(arch.param_count() / max_params)
 
     # 3. average layer size (normalized)
@@ -66,14 +68,14 @@ class ProxyModel:
             reader = csv.DictReader(f)
             for row in reader:
                 arch = Architecture(
-                    hidden_layers=eval(row['layers']),
-                    activations=eval(row['activations']),
-                    dropout_rates=eval(row['dropout_rates']),
+                    hidden_layers=ast.literal_eval(row['layers']),
+                    activations=ast.literal_eval(row['activations']),
+                    dropout_rates=ast.literal_eval(row['dropout_rates']),
                     learning_rate=float(row['learning_rate'])
                 )
                 features = architecture_to_features(arch)
                 X.append(features)
-                y.append(float(row['val_acc']))
+                y.append(float(row['val_score']))
 
         X = np.array(X)
         y = np.array(y)

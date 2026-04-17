@@ -1,22 +1,33 @@
 import heapq
-import random
+import csv
 from search.space import Architecture
 from search.operators import get_successors
 
-def epsilon_greedy_heuristic(arch, epsilon=0.3):
-    if random.random() < epsilon:
-        return random.uniform(0, 1)  # explore randomly 30% of the time
-    else:
-        return naive_heuristic(arch)  # exploit heuristic 70% of the time
-
-def random_heuristic(arch):
-    return random.uniform(0, 1)
-
 def naive_heuristic(arch):
-    max_params = 784 * 512 + 512 * 10
+    from search.space import INPUT_SIZE, OUTPUT_SIZE
+    max_params = INPUT_SIZE * 512 + 512 * OUTPUT_SIZE
     return 1.0 - (arch.param_count() / max_params)
 
-def astar_search(evaluate_fn, budget=50, use_proxy=False, proxy=None):
+def save_result(result, path, write_header=False):
+    fieldnames = ['layers', 'activations', 'dropout_rates', 'learning_rate',
+                  'val_score', 'train_time', 'param_count']
+    mode = 'w' if write_header else 'a'
+    with open(path, mode, newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if write_header:
+            writer.writeheader()
+        arch = result['architecture']
+        writer.writerow({
+            'layers': arch.hidden_layers,
+            'activations': arch.activations,
+            'dropout_rates': arch.dropout_rates,
+            'learning_rate': arch.learning_rate,
+            'val_score': round(result['val_acc'], 4),
+            'train_time': round(result['train_time'], 2),
+            'param_count': result['param_count']
+        })
+
+def astar_search(evaluate_fn, budget=30, use_proxy=False, proxy=None, results_path=None):
     start = Architecture()
 
     counter = 0
@@ -25,6 +36,7 @@ def astar_search(evaluate_fn, budget=50, use_proxy=False, proxy=None):
 
     visited = set()
     results = []
+    first_write = True
 
     while open_set and len(results) < budget:
         f, _, current = heapq.heappop(open_set)
@@ -34,24 +46,31 @@ def astar_search(evaluate_fn, budget=50, use_proxy=False, proxy=None):
         visited.add(current)
 
         val_acc, train_time, params = evaluate_fn(current)
-        results.append({
+        result = {
             'architecture': current,
             'val_acc': val_acc,
             'train_time': train_time,
             'param_count': params
-        })
+        }
+        results.append(result)
+
+        # save immediately after each evaluation
+        if results_path:
+            save_result(result, results_path, write_header=first_write)
+            first_write = False
 
         print(f"Evaluated {len(results)}/{budget} | layers={current.hidden_layers} | val_acc={val_acc:.4f} | params={params}")
 
         for neighbor in get_successors(current):
             if neighbor not in visited:
-                max_params = 784 * 512 + 512 * 10
-                g = neighbor.param_count() / max_params  # normalized 0 to 1
+                from search.space import INPUT_SIZE, OUTPUT_SIZE
+                max_params = INPUT_SIZE * 512 + 512 * OUTPUT_SIZE
+                g = neighbor.param_count() / max_params
                 if use_proxy and proxy is not None:
                     h = proxy.predict(neighbor)
                 else:
                     h = naive_heuristic(neighbor)
-                f_score = g - (h * 2)  # both on same scale, accuracy weighted 2x
+                f_score = g - (h * 1)
                 counter += 1
                 heapq.heappush(open_set, (f_score, counter, neighbor))
 

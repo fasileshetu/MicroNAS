@@ -3,6 +3,8 @@ from typing import List
 
 VALID_ACTIVATIONS = ['relu', 'sigmoid', 'tanh']
 VALID_LAYER_SIZES = [32, 64, 128, 256, 512]
+INPUT_SIZE = 30  # default, gets updated by main.py after forward selection
+OUTPUT_SIZE = 1
 
 @dataclass
 class Architecture:
@@ -10,9 +12,9 @@ class Architecture:
     activations: List[str] = field(default_factory=lambda: ['relu'])
     dropout_rates: List[float] = field(default_factory=lambda: [0.0])
     learning_rate: float = 0.001
-
+    
     def param_count(self) -> int:
-        sizes = [784] + self.hidden_layers + [10]
+        sizes = [INPUT_SIZE] + self.hidden_layers + [OUTPUT_SIZE]
         return sum(sizes[i] * sizes[i+1] for i in range(len(sizes)-1))
 
     def is_valid(self) -> bool:
