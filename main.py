@@ -6,15 +6,16 @@ from search.astar import astar_search
 from train.creditcard_trainer import evaluate_architecture, set_selected_features
 from proxy.predictor import ProxyModel
 
-def phase1_collect_data(budget=50):
+def phase1_collect_data(budget=50, heuristic='naive'):
     print("-" * 50)
-    print("PHASE 1: Collecting training data with naive heuristic")
+    print(f"PHASE 1: Collecting training data with heuristic '{heuristic}'")
     print("-" * 50)
     results = astar_search(
         evaluate_fn=evaluate_architecture,
         budget=budget,
         use_proxy=False,
-        results_path='results/creditcard_phase1.csv'
+        results_path=f'results/phase1_{heuristic}.csv',
+        heuristic=heuristic
     )
     print(f"\nPhase 1 complete. {len(results)} architectures saved.")
     return results
@@ -47,7 +48,7 @@ def print_best(results, phase):
 if __name__ == '__main__':
     if not os.path.exists('results/forward_selection.json'):
         print("Forward selection results not found.")
-        print("Run first: python forward_selction.py")
+        print("Run first: python -m search.forward_selection")
         exit()
 
     with open('results/forward_selection.json') as f:
@@ -60,12 +61,15 @@ if __name__ == '__main__':
     space.INPUT_SIZE = len(selected_indices)
     set_selected_features(selected_indices)
 
-    if not os.path.exists('results/creditcard_phase1.csv'):
-        results1 = phase1_collect_data()
-    else:
-        print("Phase 1 data already exists, skipping to Phase 2")
-        with open('results/creditcard_phase1.csv') as f:
-            results1 = list(csv.DictReader(f))
+    # run ablation experiments for phase 1 heuristics
+    for h in ['A', 'B', 'C', 'D', 'E', 'diversity_v2']:
+        path = f'results/phase1_{h}.csv'
+        if not os.path.exists(path):
+            print(f"\nRunning Phase 1 with heuristic '{h}'...")
+            phase1_collect_data(budget=50, heuristic=h)
+        else:
+            print(f"Phase 1 heuristic '{h}' already exists, skipping.")
 
-    results2 = phase2_proxy_search()
-    print_best(results2, phase=2)
+    # phase 2 commented out until best phase 1 heuristic is determined
+    # results2 = phase2_proxy_search()
+    # print_best(results2, phase=2)

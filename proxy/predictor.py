@@ -1,25 +1,21 @@
 import numpy as np
-import ast
 import csv
-from sklearn.linear_model import Ridge
+import ast
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
-from search.space import INPUT_SIZE, OUTPUT_SIZE
 
 VALID_ACTIVATIONS = ['relu', 'tanh', 'sigmoid']
 VALID_LAYER_SIZES = [32, 64, 128, 256, 512]
 MAX_LAYERS = 5
 
 def architecture_to_features(arch) -> np.ndarray:
-    """
-    Converts an Architecture object into a fixed-length numeric vector
-    that the proxy model can learn from.
-    """
     features = []
 
     # 1. number of layers (normalized)
     features.append(len(arch.hidden_layers) / MAX_LAYERS)
 
     # 2. param count (normalized)
+    from search.space import INPUT_SIZE, OUTPUT_SIZE
     max_params = INPUT_SIZE * 512 + 512 * OUTPUT_SIZE
     features.append(arch.param_count() / max_params)
 
@@ -27,12 +23,12 @@ def architecture_to_features(arch) -> np.ndarray:
     avg_size = sum(arch.hidden_layers) / len(arch.hidden_layers)
     features.append(avg_size / max(VALID_LAYER_SIZES))
 
-    # 4. activation counts (how many of each activation type)
+    # 4. activation counts
     for act in VALID_ACTIVATIONS:
         count = arch.activations.count(act) / MAX_LAYERS
         features.append(count)
 
-    # 5. layer size at each position (normalized, padded to MAX_LAYERS)
+    # 5. layer size at each position (padded to MAX_LAYERS)
     for i in range(MAX_LAYERS):
         if i < len(arch.hidden_layers):
             features.append(arch.hidden_layers[i] / max(VALID_LAYER_SIZES))
@@ -51,15 +47,16 @@ def architecture_to_features(arch) -> np.ndarray:
 
 
 class ProxyModel:
-    def __init__(self):
-        self.model = Ridge(alpha=1.0)
+    def __init__(self, n_estimators=100):
+        self.model = RandomForestRegressor(
+            n_estimators=n_estimators,
+            random_state=42,
+            min_samples_leaf=2
+        )
         self.scaler = StandardScaler()
         self.is_trained = False
 
-    def train(self, csv_path='results/log.csv'):
-        """
-        Loads evaluated architectures from CSV and trains the proxy model.
-        """
+    def train(self, csv_path='results/creditcard_phase1.csv'):
         from search.space import Architecture
 
         X, y = [], []
@@ -87,13 +84,24 @@ class ProxyModel:
         print(f"Accuracy range in training data: {y.min():.4f} - {y.max():.4f}")
 
     def predict(self, arch) -> float:
-        """
-        Predicts validation accuracy for an architecture without training it.
-        Returns a float between 0 and 1.
-        """
         if not self.is_trained:
             raise RuntimeError("Proxy model has not been trained yet.")
         features = architecture_to_features(arch).reshape(1, -1)
         features_scaled = self.scaler.transform(features)
         prediction = self.model.predict(features_scaled)[0]
         return float(np.clip(prediction, 0.0, 1.0))
+
+    def uncertainty(self, arch) -> float:
+        """
+        Returns the variance of predictions across all trees.
+        High variance = proxy is uncertain = architecture is in unexplored territory.
+        """
+        if not self.is_trained:
+            raise RuntimeError("Proxy model has not been trained yet.")
+        features = architecture_to_features(arch).reshape(1, -1)
+        features_scaled = self.scaler.transform(features)
+        tree_predictions = np.array([
+            tree.predict(features_scaled)[0]
+            for tree in self.model.estimators_
+        ])
+        return float(np.var(tree_predictions))
