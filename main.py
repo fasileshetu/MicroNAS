@@ -61,8 +61,7 @@ if __name__ == '__main__':
     space.INPUT_SIZE = len(selected_indices)
     set_selected_features(selected_indices)
 
-    # run ablation experiments for phase 1 heuristics
-    for h in ['A', 'B', 'C', 'D', 'E', 'diversity_v2']:
+    for h in ['F', 'G', 'H', 'I', 'J', 'K']:
         path = f'results/phase1_{h}.csv'
         if not os.path.exists(path):
             print(f"\nRunning Phase 1 with heuristic '{h}'...")
