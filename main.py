@@ -1,9 +1,7 @@
 import csv
 import os
-import json
-import search.space as space
 from search.astar import astar_search
-from train.creditcard_trainer import evaluate_architecture, set_selected_features
+from train.creditcard_trainer import evaluate_architecture
 from proxy.predictor import ProxyModel
 
 def phase1_collect_data(budget=50, heuristic='naive'):
@@ -46,22 +44,8 @@ def print_best(results, phase):
     print(f"  Param count:{best['param_count']}")
 
 if __name__ == '__main__':
-    if not os.path.exists('results/forward_selection.json'):
-        print("Forward selection results not found.")
-        print("Run first: python -m search.forward_selection")
-        exit()
-
-    with open('results/forward_selection.json') as f:
-        fs_data = json.load(f)
-
-    selected_indices = fs_data['indices']
-    selected_names = fs_data['names']
-    print(f"Loaded {len(selected_indices)} selected features: {selected_names}")
-
-    space.INPUT_SIZE = len(selected_indices)
-    set_selected_features(selected_indices)
-
-    for h in ['F', 'G', 'H', 'I', 'J', 'K']:
+    # running on 30 raw features — no forward selection
+    for h in ['naive', 'A', 'B', 'C', 'D', 'E', 'diversity']:
         path = f'results/phase1_{h}.csv'
         if not os.path.exists(path):
             print(f"\nRunning Phase 1 with heuristic '{h}'...")

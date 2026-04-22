@@ -6,23 +6,39 @@ Budget: 50 evaluations per phase, 10 epochs per evaluation.
 
 ## Results
 
-| Run                        | Phase 1 | Phase 2 | Gap    |
-|---------------------------|---------|---------|--------|
-| Full dataset, no fixes     | 0.7978  | 0.8145  | +0.017 |
-| Sampled 50k dataset        | 0.9188  | 0.9188  | +0.000 |
-| Full dataset with fixes    | 0.8539  | 0.8372  | -0.017 |
-| Forward selected features  | 0.8009  | 0.8277  | +0.027 |
+| Run                                      | Features | Heuristic    | Proxy              | Phase 1 | Phase 2 | Gap    |
+|------------------------------------------|----------|--------------|--------------------|---------|---------|--------|
+| MNIST baseline                           | 784      | Naive        | Ridge              | 91.8%   | 92.6%   | +0.8%  |
+| Sampled 50k, naive + Ridge               | 30       | Naive        | Ridge              | 0.9188  | 0.9188  | +0.000 |
+| naive + Ridge                            | 30       | Naive        | Ridge              | 0.7978  | 0.8145  | +0.017 |
+| naive + Ridge                            | 15       | Naive        | Ridge              | 0.8273  | 0.8105  | -0.017 |
+| naive + RF                               | 15       | Naive        | RandomForest       | 0.8015  | 0.8174  | +0.016 |
+| diversity + Ridge                        | 15       | Diversity    | Ridge              | 0.8009  | 0.8318  | +0.032 |
+| diversity + RF + UCB (beta=0.5)          | 15       | Diversity    | RF + UCB           | 0.7997  | 0.8279  | +0.028 |
+| diversity + RF + UCB (beta=1.5)          | 15       | Diversity    | RF + UCB           | 0.7997  | 0.7969  | -0.003 |
+
+## Phase 1 Heuristic Ablation (15 features, Round 1)
+
+| Heuristic                  | Score Range | Layer Configs | Act Combos | Max Depth | Diversity Score |
+|----------------------------|-------------|---------------|------------|-----------|-----------------|
+| Naive (baseline)           | 0.213       | 9             | 12         | 2         | 0.357           |
+| A — equal weights          | 0.226       | 9             | 12         | 2         | 0.370           |
+| B — no depth               | 0.151       | 9             | 12         | 2         | 0.295           |
+| C — no activation diversity| 0.217       | 9             | 12         | 2         | 0.361           |
+| D — no exploration decay   | 0.188       | 9             | 12         | 2         | 0.332           |
+| E — no size score          | 0.227       | 12            | 16         | 3         | 0.419           |
+| Diversity v2               | 0.197       | 9             | 12         | 2         | 0.341           |
 
 ## Key Findings
 
-- Sampling the dataset improved absolute scores but eliminated proxy advantage
-- Forward selection on 15 features gave the largest Phase 1 vs Phase 2 gap
-- High variance per architecture is a known challenge with imbalanced datasets
-- clipnorm=1.0 prevented catastrophic failures in deeper networks
-- Correct max_params normalization was critical for proxy guided exploration
+- Diversity heuristic outperformed naive on 15 features (+0032 gap vs +0.017)
+- 15 features hurt proxy quality vs 30 features — cleaner data means less score variance, less signal for proxy to learn from
+- Heuristic E (no size score) produced most diverse Phase 1 data but tested on 15 features only — needs reconfirmation on 30 features
+- Sampled 50k dataset produced highest absolute scores but proxy added no value — problem too easy
+- RandomForest + UCB did not beat Ridge alone in any configuration tested
 
 ## Current Approach
 
-Forward selection on 15 features with full 227,000 row dataset.
-Phase 2 found [64, 32] sigmoid/relu at 0.8277 AUC-PR with 3,040 params
-vs Phase 1 best [64] relu at 0.8009 AUC-PR with 1,024 params.
+Restarting heuristic ablation on 30 raw features to confirm Round 1 findings before proceeding to Round 2 and final benchmark run.
+
+- Phase 2 UCB beta sweep: test beta = 0.0, 0.1, 0.3, 0.5, 1.0 with winning Phase 1 heuristic on 30 features
