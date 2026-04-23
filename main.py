@@ -45,7 +45,7 @@ def print_best(results, phase):
 
 if __name__ == '__main__':
     # running on 30 raw features — no forward selection
-    for h in ['naive', 'A', 'B', 'C', 'D', 'E', 'diversity']:
+    for h in ['F', 'G', 'H', 'I', 'J', 'K']:
         path = f'results/phase1_{h}.csv'
         if not os.path.exists(path):
             print(f"\nRunning Phase 1 with heuristic '{h}'...")

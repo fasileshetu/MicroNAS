@@ -87,6 +87,62 @@ def heuristic_E(arch, visited, t, budget):
         0.33 * _exploration_bonus(t, budget)
     )
 
+# round 2 heuristics — weight tuning around A and E
+def heuristic_F(arch, visited, t, budget):
+    # tiny size penalty
+    return (
+        0.10 * _size_score(arch) +
+        0.30 * _depth_score(arch) +
+        0.30 * _activation_diversity_score(arch, visited) +
+        0.30 * _exploration_bonus(t, budget)
+    )
+
+def heuristic_G(arch, visited, t, budget):
+    # double depth weight
+    return (
+        0.00 * _size_score(arch) +
+        0.50 * _depth_score(arch) +
+        0.25 * _activation_diversity_score(arch, visited) +
+        0.25 * _exploration_bonus(t, budget)
+    )
+
+def heuristic_H(arch, visited, t, budget):
+    # double exploration weight
+    return (
+        0.00 * _size_score(arch) +
+        0.25 * _depth_score(arch) +
+        0.25 * _activation_diversity_score(arch, visited) +
+        0.50 * _exploration_bonus(t, budget)
+    )
+
+def heuristic_I(arch, visited, t, budget):
+    # double activation weight
+    return (
+        0.00 * _size_score(arch) +
+        0.25 * _depth_score(arch) +
+        0.50 * _activation_diversity_score(arch, visited) +
+        0.25 * _exploration_bonus(t, budget)
+    )
+
+def heuristic_J(arch, visited, t, budget):
+    # depth + exploration focused
+    return (
+        0.00 * _size_score(arch) +
+        0.40 * _depth_score(arch) +
+        0.20 * _activation_diversity_score(arch, visited) +
+        0.40 * _exploration_bonus(t, budget)
+    )
+
+def heuristic_K(arch, visited, t, budget):
+    # E + layer size diversity bonus
+    return (
+        0.00 * _size_score(arch) +
+        0.25 * _depth_score(arch) +
+        0.25 * _activation_diversity_score(arch, visited) +
+        0.25 * _exploration_bonus(t, budget) +
+        0.25 * _layer_size_diversity(arch, visited)
+    )
+
 HEURISTICS = {
     'naive':      lambda arch, visited, t, budget: naive_heuristic(arch),
     'diversity':  diversity_heuristic,
@@ -95,4 +151,10 @@ HEURISTICS = {
     'C':          heuristic_C,
     'D':          heuristic_D,
     'E':          heuristic_E,
+    'F':          heuristic_F,
+    'G':          heuristic_G,
+    'H':          heuristic_H,
+    'I':          heuristic_I,
+    'J':          heuristic_J,
+    'K':          heuristic_K,
 }
