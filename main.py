@@ -45,13 +45,24 @@ def print_best(results, phase):
 
 if __name__ == '__main__':
     # running on 30 raw features — no forward selection
-    for h in ['F', 'G', 'H', 'I', 'J', 'K']:
-        path = f'results/phase1_{h}.csv'
-        if not os.path.exists(path):
-            print(f"\nRunning Phase 1 with heuristic '{h}'...")
-            phase1_collect_data(budget=50, heuristic=h)
+    for h in ['naive', 'A', 'B', 'C', 'D', 'E', 'diversity']:
+        phase1_path = f'results/phase1_{h}.csv'
+        phase2_path = f'results/phase2_{h}.csv'
+        if not os.path.exists(phase2_path):
+            print(f"\nRunning Phase 2 for heuristic '{h}'...")
+            proxy = ProxyModel()
+            proxy.train(phase1_path)
+            results = astar_search(
+                evaluate_fn=evaluate_architecture,
+                budget=50,
+                use_proxy=True,
+                proxy=proxy,
+                results_path=phase2_path
+            )
+            results.sort(key=lambda x: x['val_acc'], reverse=True)
+            print(f"Phase 2 best: {results[0]['val_acc']:.4f} {results[0]['architecture'].hidden_layers}")
         else:
-            print(f"Phase 1 heuristic '{h}' already exists, skipping.")
+            print(f"Phase 2 for heuristic '{h}' already exists, skipping.")
 
     # phase 2 commented out until best phase 1 heuristic is determined
     # results2 = phase2_proxy_search()

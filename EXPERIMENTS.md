@@ -6,61 +6,104 @@ Budget: 50 evaluations per phase, 10 epochs per evaluation.
 
 ## Results
 
-| Run                                      | Features | Heuristic    | Proxy              | Phase 1 | Phase 2 | Gap    |
-|------------------------------------------|----------|--------------|--------------------|---------|---------|--------|
-| MNIST baseline                           | 784      | Naive        | Ridge              | 91.8%   | 92.6%   | +0.8%  |
-| Sampled 50k, naive + Ridge               | 30       | Naive        | Ridge              | 0.9188  | 0.9188  | +0.000 |
-| naive + Ridge                            | 30       | Naive        | Ridge              | 0.7978  | 0.8145  | +0.017 |
-| naive + Ridge                            | 15       | Naive        | Ridge              | 0.8273  | 0.8105  | -0.017 |
-| naive + RF                               | 15       | Naive        | RandomForest       | 0.8015  | 0.8174  | +0.016 |
-| diversity + Ridge                        | 15       | Diversity    | Ridge              | 0.8009  | 0.8318  | +0.032 |
-| diversity + RF + UCB (beta=0.5)          | 15       | Diversity    | RF + UCB           | 0.7997  | 0.8279  | +0.028 |
-| diversity + RF + UCB (beta=1.5)          | 15       | Diversity    | RF + UCB           | 0.7997  | 0.7969  | -0.003 |
+| Run                             | Features | Heuristic | Proxy    | Phase 1 | Phase 2 | Gap    |
+|---------------------------------|----------|-----------|----------|---------|---------|--------|
+| MNIST baseline                  | 784      | Naive     | Ridge    | 91.8%   | 92.6%   | +0.8%  |
+| Sampled 50k, naive + Ridge      | 30       | Naive     | Ridge    | 0.9188  | 0.9188  | +0.000 |
+| naive + Ridge                   | 30       | Naive     | Ridge    | 0.7978  | 0.8145  | +0.017 |
+| naive + Ridge                   | 15       | Naive     | Ridge    | 0.8273  | 0.8105  | -0.017 |
+| naive + RF                      | 15       | Naive     | RF       | 0.8015  | 0.8174  | +0.016 |
+| diversity + Ridge               | 15       | Diversity | Ridge    | 0.8009  | 0.8318  | +0.032 |
+| diversity + RF + UCB (beta=0.5) | 15       | Diversity | RF + UCB | 0.7997  | 0.8279  | +0.028 |
+| diversity + RF + UCB (beta=1.5) | 15       | Diversity | RF + UCB | 0.7997  | 0.7969  | -0.003 |
 
 ## Phase 1 Heuristic Ablation (15 features, Round 1)
 
-| Heuristic                  | Score Range | Layer Configs | Act Combos | Max Depth | Diversity Score |
-|----------------------------|-------------|---------------|------------|-----------|-----------------|
-| Naive (baseline)           | 0.213       | 9             | 12         | 2         | 0.357           |
-| A — equal weights          | 0.226       | 9             | 12         | 2         | 0.370           |
-| B — no depth               | 0.151       | 9             | 12         | 2         | 0.295           |
-| C — no activation diversity| 0.217       | 9             | 12         | 2         | 0.361           |
-| D — no exploration decay   | 0.188       | 9             | 12         | 2         | 0.332           |
-| E — no size score          | 0.227       | 12            | 16         | 3         | 0.419           |
-| Diversity v2               | 0.197       | 9             | 12         | 2         | 0.341           |
+Note: diversity score was used during this phase as a proxy for training data
+quality but was later abandoned after empirical Phase 2 validation showed no
+correlation with Phase 2 AUC-PR. Structural metrics below are still meaningful
+as diagnostics.
 
-## Key Findings
-
-- Diversity heuristic outperformed naive on 15 features (+0032 gap vs +0.017)
-- 15 features hurt proxy quality vs 30 features — cleaner data means less score variance, less signal for proxy to learn from
-- Heuristic E (no size score) produced most diverse Phase 1 data but tested on 15 features only — needs reconfirmation on 30 features
-- Sampled 50k dataset produced highest absolute scores but proxy added no value — problem too easy
-- RandomForest + UCB did not beat Ridge alone in any configuration tested
+| Heuristic                   | Score Range | Layer Configs | Act Combos | Max Depth |
+|-----------------------------|-------------|---------------|------------|-----------|
+| Naive (baseline)            | 0.213       | 9             | 12         | 2         |
+| A — equal weights           | 0.226       | 9             | 12         | 2         |
+| B — no depth                | 0.151       | 9             | 12         | 2         |
+| C — no activation diversity | 0.217       | 9             | 12         | 2         |
+| D — no exploration decay    | 0.188       | 9             | 12         | 2         |
+| E — no size score           | 0.227       | 12            | 16         | 3         |
+| Diversity                   | 0.197       | 9             | 12         | 2         |
 
 ## Phase 1 Heuristic Ablation — Round 1 (30 features)
 
-| Heuristic                   | Score Range | Layer Configs | Act Combos | Max Depth | Diversity Score |
-|-----------------------------|-------------|---------------|------------|-----------|-----------------|
-| Naive (baseline)            | 0.224       | 8             | 12         | 2         | 0.360           |
-| A — equal weights           | 0.199       | 10            | 23         | 3         | 0.417           |
-| B — no depth                | 0.181       | 11            | 15         | 3         | 0.359           |
-| C — no activation diversity | 0.191       | 10            | 19         | 3         | 0.385           |
-| D — no exploration decay    | 0.173       | 10            | 18         | 3         | 0.361           |
-| E — no size score           | 0.197       | 10            | 21         | 3         | 0.403           |
-| Diversity                   | 0.190       | 10            | 16         | 3         | 0.366           |
+| Heuristic                   | Score Range | Layer Configs | Act Combos | Max Depth |
+|-----------------------------|-------------|---------------|------------|-----------|
+| Naive (baseline)            | 0.224       | 8             | 12         | 2         |
+| A — equal weights           | 0.199       | 10            | 23         | 3         |
+| B — no depth                | 0.181       | 11            | 15         | 3         |
+| C — no activation diversity | 0.191       | 10            | 19         | 3         |
+| D — no exploration decay    | 0.173       | 10            | 18         | 3         |
+| E — no size score           | 0.197       | 10            | 21         | 3         |
+| Diversity                   | 0.190       | 10            | 16         | 3         |
 
-## Key Findings (Round 1, 30 features)
+## Phase 2 Validation — Ridge Proxy (30 features, all 7 heuristics)
 
-- Heuristic A (equal weights) won on 30 features with diversity score 0.417
-- Heuristic E (no size score) came second at 0.403 — was the winner on 15 features
-- All diversity-aware heuristics explored 3-layer architectures — naive never did
-- Removing depth bonus (B) consistently hurts across both 15 and 30 feature runs
+| Heuristic | Phase 2 Best | Best Architecture |
+|-----------|-------------|--------------------|
+| Naive     | 0.8568      | [64, 32] tanh/relu |
+| A         | 0.8504      | [128] relu         |
+| D         | 0.8495      | [64] relu          |
+| E         | 0.8468      | [128] relu         |
+| Diversity | 0.8451      | [128] relu         |
+| B         | 0.8421      | [64, 32] relu/relu |
+| C         | 0.8407      | [64] relu          |
+
+## Phase 2 Validation — RandomForest Proxy (30 features, all 7 heuristics)
+
+| Heuristic | Phase 2 Best | Best Architecture |
+|-----------|-------------|--------------------|
+| Diversity | 0.8608      | [128] relu         |
+| B         | 0.8571      | [64, 32] relu/relu |
+| C         | 0.8559      | [128] relu         |
+| Naive     | 0.8516      | [128] relu         |
+| D         | 0.8437      | [64] relu          |
+| E         | 0.8416      | [128] relu         |
+| A         | 0.8406      | [128] relu         |
+
+## Key Findings
+
+- Diversity heuristic outperformed naive on 15 features (+0.032 gap vs +0.017)
+- 15 features hurt proxy quality vs 30 features — cleaner data produces less score
+  variance, giving the proxy less signal to learn from
+- Forward selection results preserved for post-NAS experiment comparing final
+  architecture performance on 30 vs 15 features
+- Sampled 50k dataset produced highest absolute scores but proxy added no value —
+  problem too easy on smaller dataset
+- All diversity-aware heuristics on 30 features explored 3-layer architectures —
+  naive never did
+- Removing depth bonus (B) consistently hurts across both feature set runs
 - Removing exploration decay (D) produces the lowest score range — hurts proxy signal
-- Naive heuristic is worst in all meaningful metrics despite highest score range
-- A and E are close enough that Round 2 will explore variations around both
+- Diversity score was abandoned as a decision metric — empirical Phase 2 validation
+  showed no correlation with Phase 2 AUC-PR
+- All heuristics produced Ridge Phase 2 results within a narrow range (0.8407-0.8568)
+  — Phase 1 heuristic choice has limited impact when using Ridge proxy
+- RandomForest does not consistently outperform Ridge — wins for some heuristics,
+  loses for others
+- Diversity heuristic + RandomForest produced the highest Phase 2 result across all
+  runs at 0.8608 — new best result
+- Proxy choice and Phase 1 heuristic interact — the best proxy depends on what
+  training data was collected in Phase 1
 
 ## Current Approach
 
-Restarting heuristic ablation on 30 raw features to confirm Round 1 findings before proceeding to Round 2 and final benchmark run.
+Best result so far: 0.8608 AUC-PR — diversity heuristic Phase 1 + RandomForest
+proxy Phase 2, no UCB. Running UCB beta sweep (0.0, 0.1, 0.3, 0.5, 1.0) with
+diversity heuristic + RF proxy to determine optimal exploration-exploitation tradeoff.
 
-- Phase 2 UCB beta sweep: test beta = 0.0, 0.1, 0.3, 0.5, 1.0 with winning Phase 1 heuristic on 30 features
+## Planned Experiments
+
+- UCB beta sweep with diversity heuristic + RF proxy (in progress):
+  beta = 0.0, 0.1, 0.3, 0.5, 1.0
+- Post-NAS feature comparison: retrain best Phase 2 architecture on 30 vs 15
+  features (3 runs each, averaged) to determine if forward selection improves
+  final model quality

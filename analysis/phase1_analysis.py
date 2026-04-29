@@ -1,8 +1,9 @@
 import pandas as pd
 import ast
 import sys
+import os
 
-def analyze_phase1(csv_path='results/creditcard_phase1.csv'):
+def analyze_phase1(csv_path='results/phase1_naive.csv'):
     df = pd.read_csv(csv_path)
     df['layers'] = df['layers'].apply(ast.literal_eval)
     df['activations'] = df['activations'].apply(ast.literal_eval)
@@ -45,14 +46,19 @@ def analyze_phase1(csv_path='results/creditcard_phase1.csv'):
     for act, count in act_counts.items():
         print(f"  {act}: {count} occurrences")
 
-    # 7. summary score
-    # higher is better — rewards diversity and score range
-    diversity_score = (layer_configs / 50) * 0.4 + \
-                      (activation_combos / 50) * 0.3 + \
-                      (score_range / 0.3) * 0.3
-    print(f"\nDiversity score (higher = better proxy training data): {diversity_score:.4f}")
+    # note: empirical Phase 2 validation showed diversity score does not
+    # reliably predict Phase 2 AUC-PR — use as a structural diagnostic
+    # only, not as a decision metric for heuristic selection
+
     print("=" * 50)
 
 if __name__ == '__main__':
-    path = sys.argv[1] if len(sys.argv) > 1 else 'results/creditcard_phase1.csv'
-    analyze_phase1(path)
+    if len(sys.argv) > 1:
+        analyze_phase1(sys.argv[1])
+    else:
+        for h in ['naive', 'A', 'B', 'C', 'D', 'E', 'diversity']:
+            path = f'results/phase1_{h}.csv'
+            if os.path.exists(path):
+                analyze_phase1(path)
+            else:
+                print(f"\nSkipping {path} — file not found")

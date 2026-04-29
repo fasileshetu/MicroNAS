@@ -1,8 +1,9 @@
 import numpy as np
 import csv
 import ast
-from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import Ridge
+from sklearn.ensemble import RandomForestRegressor
 
 VALID_ACTIVATIONS = ['relu', 'tanh', 'sigmoid']
 VALID_LAYER_SIZES = [32, 64, 128, 256, 512]
@@ -47,16 +48,20 @@ def architecture_to_features(arch) -> np.ndarray:
 
 
 class ProxyModel:
-    def __init__(self, n_estimators=100):
-        self.model = RandomForestRegressor(
-            n_estimators=n_estimators,
-            random_state=42,
-            min_samples_leaf=2
-        )
+    def __init__(self, model_type='rf', n_estimators=100):
+        if model_type == 'ridge':
+            self.model = Ridge(alpha=1.0)
+        else:
+            self.model = RandomForestRegressor(
+                n_estimators=n_estimators,
+                random_state=42,
+                min_samples_leaf=2
+            )
+        self.model_type = model_type
         self.scaler = StandardScaler()
         self.is_trained = False
 
-    def train(self, csv_path='results/creditcard_phase1.csv'):
+    def train(self, csv_path='results/phase1_naive.csv'):
         from search.space import Architecture
 
         X, y = [], []
@@ -92,10 +97,8 @@ class ProxyModel:
         return float(np.clip(prediction, 0.0, 1.0))
 
     def uncertainty(self, arch) -> float:
-        """
-        Returns the variance of predictions across all trees.
-        High variance = proxy is uncertain = architecture is in unexplored territory.
-        """
+        if self.model_type != 'rf':
+            raise RuntimeError("Uncertainty estimation is only available for RandomForest proxy.")
         if not self.is_trained:
             raise RuntimeError("Proxy model has not been trained yet.")
         features = architecture_to_features(arch).reshape(1, -1)
