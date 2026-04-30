@@ -137,14 +137,23 @@ Beta: 0.0 (no UCB)
 Budget: 150
 Best result: 0.8676 AUC-PR -- [128] relu
 
-## Proxy Quality
+## Post-NAS Feature Comparison — [128] relu, 3 runs each
 
-Evaluated on diversity heuristic Phase 1 training data (budget=150) vs Phase 2 actual results.
-Kendall's Tau:  0.4595 (p=0.0000)
-Top-10 Overlap: 40.00% (4/10 architectures)
+| Feature Set        | Run 1  | Run 2  | Run 3  | Mean   | Std    |
+|--------------------|--------|--------|--------|--------|--------|
+| 30 features (all)  | 0.8419 | 0.8354 | 0.8450 | 0.8407 | 0.0040 |
+| 15 features (fwd)  | 0.6827 | 0.7084 | 0.6904 | 0.6938 | 0.0108 |
+
+Difference: +0.1469 in favor of 30 features.
+
+Note: Forward selection using logistic regression actively hurts final model
+quality on this dataset. The PCA-transformed features in the ULB fraud dataset
+do not have a clean 15-feature subset that preserves fraud signal -- the full
+30 features are required. This confirms the decision to use 30 features
+throughout the NAS pipeline was correct.
 
 ## Planned Experiments
 
-- Post-NAS feature comparison: retrain best Phase 2 architecture ([128] relu) on
-  30 vs 15 features (3 runs each, averaged) to determine if forward selection
-  improves final model quality independent of the search process
+- Reading Neural Architecture Search: Insights from 1000 Papers
+  https://arxiv.org/pdf/2301.08727 to identify further optimization opportunities
+- Further optimization of results based on findings from the survey
