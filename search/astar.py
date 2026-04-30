@@ -1,5 +1,6 @@
 import heapq
 import csv
+from datetime import datetime
 from search.space import Architecture
 from search.operators import get_successors
 from search.heuristics import HEURISTICS
@@ -24,8 +25,10 @@ def save_result(result, path, write_header=False):
         })
 
 def astar_search(evaluate_fn, budget=50, use_proxy=False, proxy=None,
-                 results_path=None, heuristic='naive'):
+                 results_path=None, heuristic='naive', beta=0.0):
     start = Architecture()
+    start_time = datetime.now()
+    print(f"[{start_time.strftime('%H:%M:%S')}] A* search started | budget={budget} | heuristic={'proxy+UCB' if use_proxy else heuristic} | beta={beta}")
 
     counter = 0
     open_set = []
@@ -42,7 +45,10 @@ def astar_search(evaluate_fn, budget=50, use_proxy=False, proxy=None,
             continue
         visited.add(current)
 
+        eval_start = datetime.now()
         val_acc, train_time, params = evaluate_fn(current)
+        eval_elapsed = (datetime.now() - eval_start).seconds
+
         result = {
             'architecture': current,
             'val_acc': val_acc,
@@ -55,7 +61,8 @@ def astar_search(evaluate_fn, budget=50, use_proxy=False, proxy=None,
             save_result(result, results_path, write_header=first_write)
             first_write = False
 
-        print(f"Evaluated {len(results)}/{budget} | layers={current.hidden_layers} | val_acc={val_acc:.4f} | params={params}")
+        now = datetime.now().strftime('%H:%M:%S')
+        print(f"[{now}] {len(results)}/{budget} | layers={current.hidden_layers} | val_acc={val_acc:.4f} | params={params} | eval={eval_elapsed}s")
 
         t = len(results)
 
@@ -67,12 +74,18 @@ def astar_search(evaluate_fn, budget=50, use_proxy=False, proxy=None,
 
                 if use_proxy and proxy is not None:
                     h = proxy.predict(neighbor)
+                    u = proxy.uncertainty(neighbor) if beta > 0.0 else 0.0
+                    f_score = g - (h * 1) - (beta * u)
                 else:
                     h = HEURISTICS[heuristic](neighbor, visited, t, budget)
+                    f_score = g - (h * 1)
 
-                f_score = g - (h * 1)
                 counter += 1
                 heapq.heappush(open_set, (f_score, counter, neighbor))
+
+    end_time = datetime.now()
+    elapsed = (end_time - start_time).seconds // 60
+    print(f"[{end_time.strftime('%H:%M:%S')}] A* search complete | {len(results)} architectures | total={elapsed}m")
 
     results.sort(key=lambda x: x['val_acc'], reverse=True)
     return results

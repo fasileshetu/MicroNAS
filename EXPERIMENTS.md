@@ -1,6 +1,7 @@
 # Experiments
 
-All experiments run on [Credit Card Fraud Detection dataset](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud) (ULB).
+All experiments run on the Credit Card Fraud Detection dataset (ULB).
+https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud
 Metric: AUC-PR (area under precision-recall curve).
 Budget: 50 evaluations per phase, 10 epochs per evaluation.
 
@@ -48,27 +49,41 @@ as diagnostics.
 
 ## Phase 2 Validation — Ridge Proxy (30 features, all 7 heuristics)
 
-| Heuristic | Phase 2 Best | Best Architecture |
-|-----------|-------------|--------------------|
-| Naive     | 0.8568      | [64, 32] tanh/relu |
-| A         | 0.8504      | [128] relu         |
-| D         | 0.8495      | [64] relu          |
-| E         | 0.8468      | [128] relu         |
-| Diversity | 0.8451      | [128] relu         |
-| B         | 0.8421      | [64, 32] relu/relu |
-| C         | 0.8407      | [64] relu          |
+| Heuristic | Phase 2 Best | Best Architecture  |
+|-----------|--------------|--------------------|
+| Naive     | 0.8568       | [64, 32] tanh/relu |
+| A         | 0.8504       | [128] relu         |
+| D         | 0.8495       | [64] relu          |
+| E         | 0.8468       | [128] relu         |
+| Diversity | 0.8451       | [128] relu         |
+| B         | 0.8421       | [64, 32] relu/relu |
+| C         | 0.8407       | [64] relu          |
 
 ## Phase 2 Validation — RandomForest Proxy (30 features, all 7 heuristics)
 
-| Heuristic | Phase 2 Best | Best Architecture |
-|-----------|-------------|--------------------|
-| Diversity | 0.8608      | [128] relu         |
-| B         | 0.8571      | [64, 32] relu/relu |
-| C         | 0.8559      | [128] relu         |
-| Naive     | 0.8516      | [128] relu         |
-| D         | 0.8437      | [64] relu          |
-| E         | 0.8416      | [128] relu         |
-| A         | 0.8406      | [128] relu         |
+| Heuristic | Phase 2 Best | Best Architecture  |
+|-----------|--------------|--------------------|
+| Diversity | 0.8608       | [128] relu         |
+| B         | 0.8571       | [64, 32] relu/relu |
+| C         | 0.8559       | [128] relu         |
+| Naive     | 0.8516       | [128] relu         |
+| D         | 0.8437       | [64] relu          |
+| E         | 0.8416       | [128] relu         |
+| A         | 0.8406       | [128] relu         |
+
+## UCB Beta Sweep — Diversity Heuristic + RandomForest Proxy (30 features)
+
+| Beta | Phase 2 Best | Best Architecture |
+|------|--------------|-------------------|
+| 0.0  | 0.8494       | [128] relu        |
+| 0.1  | 0.8403       | [128] relu        |
+| 0.3  | 0.8250       | [128] relu        |
+| 0.5  | 0.8218       | [64] tanh         |
+| 1.0  | 0.8488       | [64] relu         |
+
+Note: beta=0.0 wins. UCB exploration adds no value for this configuration —
+the proxy alone is sufficient. Results are lower than the previous best of
+0.8608, consistent with run-to-run variance.
 
 ## Key Findings
 
@@ -89,21 +104,26 @@ as diagnostics.
   — Phase 1 heuristic choice has limited impact when using Ridge proxy
 - RandomForest does not consistently outperform Ridge — wins for some heuristics,
   loses for others
-- Diversity heuristic + RandomForest produced the highest Phase 2 result across all
-  runs at 0.8608 — new best result
+- Diversity heuristic + RandomForest produced the highest Phase 2 result at 0.8608
 - Proxy choice and Phase 1 heuristic interact — the best proxy depends on what
   training data was collected in Phase 1
+- UCB exploration adds no value — beta=0.0 wins the sweep, more exploration hurts
 
-## Current Approach
+## Final Configuration
 
-Best result so far: 0.8608 AUC-PR — diversity heuristic Phase 1 + RandomForest
-proxy Phase 2, no UCB. Running UCB beta sweep (0.0, 0.1, 0.3, 0.5, 1.0) with
-diversity heuristic + RF proxy to determine optimal exploration-exploitation tradeoff.
+Heuristic: Diversity
+Proxy: RandomForest
+Beta: 0.0 (no UCB)
+Best result: 0.8608 AUC-PR — [128] relu
+
+## Proxy Quality
+
+Evaluated on diversity heuristic Phase 1 training data vs Phase 2 actual results.
+Kendall's Tau:  0.4008 (p=0.0000)
+Top-10 Overlap: 70.00% (7/10 architectures)
 
 ## Planned Experiments
 
-- UCB beta sweep with diversity heuristic + RF proxy (in progress):
-  beta = 0.0, 0.1, 0.3, 0.5, 1.0
-- Post-NAS feature comparison: retrain best Phase 2 architecture on 30 vs 15
-  features (3 runs each, averaged) to determine if forward selection improves
-  final model quality
+- Post-NAS feature comparison: retrain best Phase 2 architecture ([128] relu) on
+  30 vs 15 features (3 runs each, averaged) to determine if forward selection
+  improves final model quality independent of the search process

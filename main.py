@@ -44,26 +44,22 @@ def print_best(results, phase):
     print(f"  Param count:{best['param_count']}")
 
 if __name__ == '__main__':
-    # running on 30 raw features — no forward selection
-    for h in ['naive', 'A', 'B', 'C', 'D', 'E', 'diversity']:
-        phase1_path = f'results/phase1_{h}.csv'
-        phase2_path = f'results/phase2_{h}.csv'
-        if not os.path.exists(phase2_path):
-            print(f"\nRunning Phase 2 for heuristic '{h}'...")
-            proxy = ProxyModel()
-            proxy.train(phase1_path)
+    # UCB beta sweep — diversity heuristic Phase 1 data, RandomForest proxy
+    for beta in [0.0, 0.1, 0.3, 0.5, 1.0]:
+        path = f'results/phase2_diversity_rf_ucb_{beta}.csv'
+        if not os.path.exists(path):
+            print(f"\nRunning Phase 2 with diversity heuristic, RF proxy, beta={beta}...")
+            proxy = ProxyModel(model_type='rf')
+            proxy.train('results/phase1_diversity.csv')
             results = astar_search(
                 evaluate_fn=evaluate_architecture,
                 budget=50,
                 use_proxy=True,
                 proxy=proxy,
-                results_path=phase2_path
+                results_path=path,
+                beta=beta
             )
             results.sort(key=lambda x: x['val_acc'], reverse=True)
-            print(f"Phase 2 best: {results[0]['val_acc']:.4f} {results[0]['architecture'].hidden_layers}")
+            print(f"Phase 2 best (beta={beta}): {results[0]['val_acc']:.4f} {results[0]['architecture'].hidden_layers}")
         else:
-            print(f"Phase 2 for heuristic '{h}' already exists, skipping.")
-
-    # phase 2 commented out until best phase 1 heuristic is determined
-    # results2 = phase2_proxy_search()
-    # print_best(results2, phase=2)
+            print(f"Beta={beta} already exists, skipping.")
