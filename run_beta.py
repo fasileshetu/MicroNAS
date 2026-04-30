@@ -16,7 +16,7 @@ def run_beta(beta):
 
     results = astar_search(
         evaluate_fn=evaluate_architecture,
-        budget=50,
+        budget=150,
         use_proxy=True,
         proxy=proxy,
         results_path=path,

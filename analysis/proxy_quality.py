@@ -48,5 +48,5 @@ def compute_metrics(phase1_path, phase2_path, k=10):
 if __name__ == '__main__':
     compute_metrics(
         phase1_path='results/phase1_diversity.csv',
-        phase2_path='results/phase2_diversity_rf_ucb_0.0.csv'
+        phase2_path='results/phase2_diversity_rf.csv'
     )

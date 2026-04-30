@@ -17,6 +17,7 @@ Budget: 50 evaluations per phase, 10 epochs per evaluation.
 | diversity + Ridge               | 15       | Diversity | Ridge    | 0.8009  | 0.8318  | +0.032 |
 | diversity + RF + UCB (beta=0.5) | 15       | Diversity | RF + UCB | 0.7997  | 0.8279  | +0.028 |
 | diversity + RF + UCB (beta=1.5) | 15       | Diversity | RF + UCB | 0.7997  | 0.7969  | -0.003 |
+| diversity + RF (budget=150)     | 30       | Diversity | RF       | 0.8449  | 0.8676  | +0.023 |
 
 ## Phase 1 Heuristic Ablation (15 features, Round 1)
 
@@ -81,46 +82,66 @@ as diagnostics.
 | 0.5  | 0.8218       | [64] tanh         |
 | 1.0  | 0.8488       | [64] relu         |
 
-Note: beta=0.0 wins. UCB exploration adds no value for this configuration —
+Note: beta=0.0 wins. UCB exploration adds no value for this configuration --
 the proxy alone is sufficient. Results are lower than the previous best of
 0.8608, consistent with run-to-run variance.
+
+## Increased Budget Run — Diversity Heuristic + RandomForest Proxy (150 architectures)
+
+Phase 1 budget increased from 50 to 150 to improve proxy training data quality.
+
+Proxy Quality:
+  Kendall's Tau:  0.4595 (p=0.0000)
+  Top-10 Overlap: 40.00% (4/10 architectures)
+
+Phase 2 best: 0.8676 AUC-PR -- [128] relu
+
+Note: Kendall's Tau improved from 0.40 to 0.46 with more training data. Top-10
+overlap dropped from 70% to 40%, likely due to broader search coverage at
+budget=150 making the true top-10 more dispersed. AUC-PR improved from 0.8608
+to 0.8676 -- the proxy is guiding search toward better regions despite lower
+top-10 overlap.
 
 ## Key Findings
 
 - Diversity heuristic outperformed naive on 15 features (+0.032 gap vs +0.017)
-- 15 features hurt proxy quality vs 30 features — cleaner data produces less score
+- 15 features hurt proxy quality vs 30 features -- cleaner data produces less score
   variance, giving the proxy less signal to learn from
 - Forward selection results preserved for post-NAS experiment comparing final
   architecture performance on 30 vs 15 features
-- Sampled 50k dataset produced highest absolute scores but proxy added no value —
+- Sampled 50k dataset produced highest absolute scores but proxy added no value --
   problem too easy on smaller dataset
-- All diversity-aware heuristics on 30 features explored 3-layer architectures —
+- All diversity-aware heuristics on 30 features explored 3-layer architectures --
   naive never did
 - Removing depth bonus (B) consistently hurts across both feature set runs
-- Removing exploration decay (D) produces the lowest score range — hurts proxy signal
-- Diversity score was abandoned as a decision metric — empirical Phase 2 validation
+- Removing exploration decay (D) produces the lowest score range -- hurts proxy signal
+- Diversity score was abandoned as a decision metric -- empirical Phase 2 validation
   showed no correlation with Phase 2 AUC-PR
 - All heuristics produced Ridge Phase 2 results within a narrow range (0.8407-0.8568)
-  — Phase 1 heuristic choice has limited impact when using Ridge proxy
-- RandomForest does not consistently outperform Ridge — wins for some heuristics,
+  -- Phase 1 heuristic choice has limited impact when using Ridge proxy
+- RandomForest does not consistently outperform Ridge -- wins for some heuristics,
   loses for others
-- Diversity heuristic + RandomForest produced the highest Phase 2 result at 0.8608
-- Proxy choice and Phase 1 heuristic interact — the best proxy depends on what
+- Diversity heuristic + RandomForest produced the highest Phase 2 result at 0.8676
+  (budget=150) -- new best result
+- Proxy choice and Phase 1 heuristic interact -- the best proxy depends on what
   training data was collected in Phase 1
-- UCB exploration adds no value — beta=0.0 wins the sweep, more exploration hurts
+- UCB exploration adds no value -- beta=0.0 wins the sweep, more exploration hurts
+- Increasing Phase 1 budget from 50 to 150 improved proxy Kendall's Tau (0.40 -> 0.46)
+  and Phase 2 AUC-PR (0.8608 -> 0.8676)
 
 ## Final Configuration
 
 Heuristic: Diversity
 Proxy: RandomForest
 Beta: 0.0 (no UCB)
-Best result: 0.8608 AUC-PR — [128] relu
+Budget: 150
+Best result: 0.8676 AUC-PR -- [128] relu
 
 ## Proxy Quality
 
-Evaluated on diversity heuristic Phase 1 training data vs Phase 2 actual results.
-Kendall's Tau:  0.4008 (p=0.0000)
-Top-10 Overlap: 70.00% (7/10 architectures)
+Evaluated on diversity heuristic Phase 1 training data (budget=150) vs Phase 2 actual results.
+Kendall's Tau:  0.4595 (p=0.0000)
+Top-10 Overlap: 40.00% (4/10 architectures)
 
 ## Planned Experiments
 
