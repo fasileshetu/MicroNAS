@@ -9,7 +9,6 @@ st.set_page_config(page_title="MicroNAS Dashboard", layout="wide")
 st.title("MicroNAS — Neural Architecture Search")
 st.markdown("Proxy-guided architecture search on the Credit Card Fraud Detection dataset.")
 
-# load data
 @st.cache_data
 def load_phase(path):
     df = pd.read_csv(path)
@@ -26,8 +25,8 @@ def load_forward_selection():
         return json.load(f)
 
 try:
-    phase1 = load_phase('results/creditcard_phase1.csv')
-    phase2 = load_phase('results/creditcard_phase2.csv')
+    phase1 = load_phase('results/phase1_diversity.csv')
+    phase2 = load_phase('results/phase2_diversity_rf.csv')
     fs_data = load_forward_selection()
     data_loaded = True
 except FileNotFoundError:
@@ -38,7 +37,7 @@ if data_loaded:
 
     # section 1 — benchmark summary
     st.header("Benchmark Summary")
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
     p1_best = phase1.loc[phase1['val_score'].idxmax()]
     p2_best = phase2.loc[phase2['val_score'].idxmax()]
@@ -46,7 +45,7 @@ if data_loaded:
 
     with col1:
         st.metric(
-            label="Phase 1 Best (Naive Heuristic)",
+            label="Phase 1 Best (Diversity Heuristic)",
             value=f"{p1_best['val_score']:.4f} AUC-PR",
             delta=None
         )
@@ -55,7 +54,7 @@ if data_loaded:
 
     with col2:
         st.metric(
-            label="Phase 2 Best (Proxy Guided)",
+            label="Phase 2 Best (RF Proxy Guided)",
             value=f"{p2_best['val_score']:.4f} AUC-PR",
             delta=f"{gap:+.4f} vs Phase 1"
         )
@@ -64,20 +63,29 @@ if data_loaded:
 
     with col3:
         st.metric(
-            label="Features Selected",
-            value=f"{len(fs_data['indices'])} / 30",
-            delta=None
+            label="Proxy Quality (Kendall's Tau)",
+            value="0.4595",
+            delta="+0.0587 vs budget=50"
         )
-        st.caption(f"Forward selection AUC-PR: {fs_data['score']:.4f}")
-        st.caption(f"Features: {', '.join(fs_data['names'][:5])}...")
+        st.caption("Top-10 Overlap: 40%")
+        st.caption("Trained on 150 architectures")
+
+    with col4:
+        st.metric(
+            label="Post-NAS: 30 vs 15 Features",
+            value="0.8407 vs 0.6938",
+            delta="+0.1469 (30 features wins)"
+        )
+        st.caption("Architecture: [128] relu, 3 runs each")
+        st.caption("Forward selection hurts final model quality")
 
     st.divider()
 
     # section 2 — AUC-PR across evaluations
     st.header("AUC-PR Across Evaluations")
 
-    phase1['Phase'] = 'Phase 1 — Naive Heuristic'
-    phase2['Phase'] = 'Phase 2 — Proxy Guided'
+    phase1['Phase'] = 'Phase 1 — Diversity Heuristic'
+    phase2['Phase'] = 'Phase 2 — RF Proxy Guided'
     combined = pd.concat([phase1, phase2], ignore_index=True)
 
     fig = px.scatter(
@@ -87,10 +95,9 @@ if data_loaded:
         color='Phase',
         hover_data=['layers_str', 'activations_str', 'param_count'],
         labels={'eval_order': 'Evaluation Number', 'val_score': 'AUC-PR'},
-        title='AUC-PR Score per Evaluation'
+        title='AUC-PR Score per Evaluation (150 architectures per phase)'
     )
 
-    # add best result lines
     fig.add_hline(
         y=p1_best['val_score'],
         line_dash='dash',
@@ -111,6 +118,7 @@ if data_loaded:
     # section 3 — feature importance
     st.header("Forward Selection — Feature Importance")
     st.markdown("Features selected in order of predictive value. Earlier = more important.")
+    st.markdown("Note: post-NAS comparison shows 30 features outperforms 15 selected features by 0.1469 AUC-PR on the final model.")
 
     feature_df = pd.DataFrame({
         'Feature': fs_data['names'],
@@ -154,6 +162,5 @@ if data_loaded:
             'train_time': 'Train Time (s)',
             'Phase': 'Phase'
         }),
-        width='stretch',
         hide_index=True
     )

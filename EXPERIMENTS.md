@@ -152,6 +152,20 @@ do not have a clean 15-feature subset that preserves fraud signal -- the full
 30 features are required. This confirms the decision to use 30 features
 throughout the NAS pipeline was correct.
 
+## Random Search Baseline (150 evaluations, seed=42)
+
+| Method          | Budget | Best AUC-PR | Best Architecture | Params |
+|-----------------|--------|-------------|-------------------|--------|
+| Random Search   | 150    | 0.8558      | [512] relu        | 15,872 |
+| MicroNAS Phase 2| 150    | 0.8676      | [128] relu        | 3,968  |
+| Improvement     | —      | +0.0118     | —                 | -75%   |
+
+Note: MicroNAS outperforms random search by 0.0118 AUC-PR at equal budget while
+finding a 4x more parameter-efficient architecture. The gap is modest, consistent
+with NAS literature showing random search is a strong baseline. The parameter
+efficiency argument is meaningful -- MicroNAS converged on [128] relu while random
+search required [512] relu to match performance.
+
 ## Planned Experiments
 
 - Reading Neural Architecture Search: Insights from 1000 Papers
