@@ -1,13 +1,12 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import json
 import ast
 
 st.set_page_config(page_title="MicroNAS Dashboard", layout="wide")
 st.title("MicroNAS — Neural Architecture Search")
-st.markdown("Proxy-guided architecture search on the Credit Card Fraud Detection dataset.")
+st.markdown("Proxy-guided A* search for efficient neural architecture discovery on the ULB Credit Card Fraud Detection dataset (284,807 transactions, ~0.17% fraud rate).")
 
 @st.cache_data
 def load_phase(path):
@@ -24,10 +23,24 @@ def load_forward_selection():
     with open('results/forward_selection.json') as f:
         return json.load(f)
 
+@st.cache_data
+def load_random_search():
+    df = pd.read_csv('results/random_search.csv')
+    df['layers_str'] = df['layers'].apply(str)
+    return df
+
+@st.cache_data
+def load_successive_halving():
+    df = pd.read_csv('results/successive_halving.csv')
+    df['layers_str'] = df['layers'].apply(str)
+    return df
+
 try:
     phase1 = load_phase('results/phase1_diversity.csv')
     phase2 = load_phase('results/phase2_diversity_rf.csv')
     fs_data = load_forward_selection()
+    rs_data = load_random_search()
+    sh_data = load_successive_halving()
     data_loaded = True
 except FileNotFoundError:
     data_loaded = False
@@ -37,11 +50,13 @@ if data_loaded:
 
     # section 1 — benchmark summary
     st.header("Benchmark Summary")
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
 
     p1_best = phase1.loc[phase1['val_score'].idxmax()]
     p2_best = phase2.loc[phase2['val_score'].idxmax()]
     gap = p2_best['val_score'] - p1_best['val_score']
+    rs_best = rs_data['val_score'].max()
+    sh_best = sh_data[sh_data['epochs'] == 10]['val_score'].max()
 
     with col1:
         st.metric(
@@ -63,6 +78,15 @@ if data_loaded:
 
     with col3:
         st.metric(
+            label="vs Random Search",
+            value=f"{rs_best:.4f} AUC-PR",
+            delta=f"{p2_best['val_score'] - rs_best:+.4f} MicroNAS advantage"
+        )
+        st.caption("Random search best: [512] relu")
+        st.caption("15,872 params — 4x less efficient")
+
+    with col4:
+        st.metric(
             label="Proxy Quality (Kendall's Tau)",
             value="0.4595",
             delta="+0.0587 vs budget=50"
@@ -70,18 +94,44 @@ if data_loaded:
         st.caption("Top-10 Overlap: 40%")
         st.caption("Trained on 150 architectures")
 
-    with col4:
+    with col5:
         st.metric(
             label="Post-NAS: 30 vs 15 Features",
             value="0.8407 vs 0.6938",
             delta="+0.1469 (30 features wins)"
         )
-        st.caption("Architecture: [128] relu, 3 runs each")
-        st.caption("Forward selection hurts final model quality")
+        st.caption("[128] relu, 3 runs each averaged")
+        st.caption("Forward selection hurts model quality")
 
     st.divider()
 
-    # section 2 — AUC-PR across evaluations
+    # section 2 — method comparison
+    st.header("Method Comparison")
+
+    comparison_df = pd.DataFrame({
+        'Method': ['MicroNAS Phase 2', 'SuccessiveHalving (budget=50)', 'Random Search', 'SuccessiveHalving (budget=150)'],
+        'Best AUC-PR': [0.8676, 0.8590, 0.8558, 0.8398],
+        'Total Evaluations': [150, 93, 150, 280],
+        'Best Architecture': ['[128] relu', '[128] relu', '[512] relu', '[64] relu'],
+        'Params': [3968, 3968, 15872, 1984]
+    })
+
+    fig0 = px.bar(
+        comparison_df,
+        x='Method',
+        y='Best AUC-PR',
+        color='Method',
+        text='Best AUC-PR',
+        title='AUC-PR by Search Method',
+        labels={'Best AUC-PR': 'AUC-PR'}
+    )
+    fig0.update_traces(texttemplate='%{text:.4f}', textposition='outside')
+    fig0.update_layout(showlegend=False, yaxis_range=[0.82, 0.875])
+    st.plotly_chart(fig0, config={'displayModeBar': True})
+
+    st.divider()
+
+    # section 3 — AUC-PR across evaluations
     st.header("AUC-PR Across Evaluations")
 
     phase1['Phase'] = 'Phase 1 — Diversity Heuristic'
@@ -97,7 +147,6 @@ if data_loaded:
         labels={'eval_order': 'Evaluation Number', 'val_score': 'AUC-PR'},
         title='AUC-PR Score per Evaluation (150 architectures per phase)'
     )
-
     fig.add_hline(
         y=p1_best['val_score'],
         line_dash='dash',
@@ -110,15 +159,53 @@ if data_loaded:
         line_color='red',
         annotation_text=f"Phase 2 best: {p2_best['val_score']:.4f}"
     )
-
     st.plotly_chart(fig, config={'displayModeBar': True})
 
     st.divider()
 
-    # section 3 — feature importance
+    # section 4 — proxy quality
+    st.header("Proxy Quality")
+    st.markdown("Kendall's Tau measures how well the surrogate model ranks architectures by predicted AUC-PR vs actual AUC-PR. Higher = better proxy.")
+
+    proxy_df = pd.DataFrame({
+        'Budget': ['budget=50', 'budget=150'],
+        "Kendall's Tau": [0.4008, 0.4595],
+        'Top-10 Overlap': [0.70, 0.40]
+    })
+
+    col_a, col_b = st.columns(2)
+    with col_a:
+        fig_tau = px.bar(
+            proxy_df,
+            x='Budget',
+            y="Kendall's Tau",
+            text="Kendall's Tau",
+            title="Kendall's Tau by Budget",
+            color='Budget'
+        )
+        fig_tau.update_traces(texttemplate='%{text:.4f}', textposition='outside')
+        fig_tau.update_layout(showlegend=False, yaxis_range=[0, 0.6])
+        st.plotly_chart(fig_tau, config={'displayModeBar': True})
+
+    with col_b:
+        fig_topk = px.bar(
+            proxy_df,
+            x='Budget',
+            y='Top-10 Overlap',
+            text='Top-10 Overlap',
+            title='Top-10 Overlap by Budget',
+            color='Budget'
+        )
+        fig_topk.update_traces(texttemplate='%{text:.0%}', textposition='outside')
+        fig_topk.update_layout(showlegend=False, yaxis_range=[0, 1])
+        st.plotly_chart(fig_topk, config={'displayModeBar': True})
+
+    st.divider()
+
+    # section 5 — feature importance
     st.header("Forward Selection — Feature Importance")
-    st.markdown("Features selected in order of predictive value. Earlier = more important.")
-    st.markdown("Note: post-NAS comparison shows 30 features outperforms 15 selected features by 0.1469 AUC-PR on the final model.")
+    st.markdown("Features selected in order of predictive value by logistic regression forward selection.")
+    st.markdown("Note: post-NAS comparison shows 30 features outperforms 15 selected features by **0.1469 AUC-PR** — forward selection actively hurts final model quality on this dataset.")
 
     feature_df = pd.DataFrame({
         'Feature': fs_data['names'],
@@ -137,7 +224,7 @@ if data_loaded:
 
     st.divider()
 
-    # section 4 — architecture explorer
+    # section 6 — architecture explorer
     st.header("Architecture Explorer")
 
     phase_filter = st.selectbox("Select Phase", ["Both", "Phase 1", "Phase 2"])
