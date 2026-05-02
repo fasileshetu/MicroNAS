@@ -45,7 +45,7 @@ def load_creditcard(path='data/creditcard.csv'):
     )
     return (X_train, y_train), (X_val, y_val)
 
-def evaluate_architecture(arch: Architecture) -> tuple:
+def evaluate_architecture(arch: Architecture, epochs: int = 10) -> tuple:
     (x_train, y_train), (x_val, y_val) = load_creditcard()
 
     fraud_count = y_train.sum()
@@ -69,7 +69,7 @@ def evaluate_architecture(arch: Architecture) -> tuple:
     start = time.time()
     model.fit(
         x_train, y_train,
-        epochs=10,
+        epochs=epochs,
         batch_size=64,
         class_weight=class_weight,
         callbacks=[early_stop],
