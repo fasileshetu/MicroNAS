@@ -1,6 +1,6 @@
 # MicroNAS
 
-A micro-scale Neural Architecture Search (NAS) system built from scratch, applying A* search with learned proxy heuristics to discover efficient neural network architectures for credit card fraud detection.
+A micro-scale Neural Architecture Search (NAS) system built from scratch — the same class of technique used by Google AutoML and DeepMind — applying A* search with learned proxy heuristics to discover efficient neural network architectures for credit card fraud detection.
 
 The core idea: frame architecture design as a search problem. States are neural networks defined by hidden layer widths and activation functions. Operators mutate architectures. A learned surrogate model serves as the search heuristic, predicting AUC-PR without full training.
 
